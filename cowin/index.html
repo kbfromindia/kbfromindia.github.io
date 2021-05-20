@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Vaccine Availability</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <table id="data-table" class="table table-bordered" style="margin-top: 20px;">
+    <thead>
+      <tr>
+        <th>Center</th>
+        <th>Slot</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+  <div id="scan-summary"></div>
+
+</div>
+
+</body>
+
+
+<script>
+
+$(document).ready( function () {
+
+	// request permission on page load
+	document.addEventListener('DOMContentLoaded', function() {
+	 if (!Notification) {
+	  alert('Desktop notifications not available in your browser. Try Chromium.');
+	  return;
+	 }
+
+	 if (Notification.permission !== 'granted')
+	  Notification.requestPermission();
+	});
+
+
+	scan();
+
+	notifyMe();
+
+});
+
+
+function notifyMe() {
+	 if (Notification.permission !== 'granted')
+	  Notification.requestPermission();
+	 else {
+	  var notification = new Notification('CoWin Vaccines Notification', {
+	   body: 'Slots available ' + new Date(),
+	  });
+	  
+	 }
+}
+
+
+function scan(){
+
+		$("#data-table tbody").empty();
+	$.ajax({
+	    'url': "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=725&date="+moment(new Date()).format("DD-MM-YYYY"),
+	    'method': "GET",
+	    'contentType': 'application/json'
+	}).done( function(data) {
+		
+		var table_data = []
+
+		$.each(data.centers, function () {
+
+
+  			var center = this;
+  			var slots = [];
+  			$.each(center.sessions, function () {
+  				if(this.available_capacity_dose1>0){
+  					slots.push([this.date,this.min_age_limit,this.available_capacity_dose1].join(','));
+  				}
+  				
+			});
+			if(slots.length>0){
+					table_data.push( [center.name + '<br/>' + center.address + '<br/>' + center.pincode,
+						slots.join('<br/>')] );
+  	
+			}
+
+		});
+
+	
+		$.each(table_data, function () {
+			$("#data-table tbody").append('<tr><td>'+this[0]+'</td><td>'+this[1]+'</td></tr>');
+		});
+
+	
+		var summary = 'Data received for ' + data.centers.length + ' centers. Scanned date time: ' 
+		+ new Date();
+
+		$('#scan-summary').html(summary);
+
+		if(table_data.length>0){
+			notifyMe();
+		}
+		setTimeout(function(){ scan(); }, (5000 + Math.floor(Math.random() * 5000)) );
+
+	});
+}
+
+</script>
+
+
+</html>
